@@ -131,7 +131,7 @@ abstract class Controller
         return response()->json($responseData, $status);
     }
 
-    public function res_wentwrong()
+    protected function res_wentwrong()
     {
         $responseData['result'] = false;
         $responseData['code'] = 1;

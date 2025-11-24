@@ -26,6 +26,11 @@ class Room extends Model
     // Define relationship with RentPayment
     public function tenants()
     {
-        return $this->belongsToMany(Tenant::class, 'rent_payments', 'room_id', 'tenant_id');       
+        return $this->belongsToMany(Tenant::class, 'rent_payments', 'room_id', 'tenant_id')
+                    ->withPivot(
+                        'amount_paid', 
+                        'payment_date', 
+                        'payment_status'
+                    )->withTimestamps();       
     }
 }

@@ -16,10 +16,10 @@ return new class extends Migration
             $table->id();
             $table->string('first_name');
             $table->string('last_name');
-            $table->unsignedTinyInteger('gender')->comment('1: Male, 2: Female, 3: Other')->nullable();
+            $table->unsignedTinyInteger('gender')->comment('1: Male, 2: Female, 3: Other');
             $table->string('email')->unique();
             $table->string('phone_number')->unique();
-            $table->string('address')->nullable();
+            $table->text('address')->nullable();
             $table->timestamp('joined_at')->nullable();
             $table->timestamps();
         });

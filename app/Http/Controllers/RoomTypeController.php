@@ -14,7 +14,7 @@ class RoomTypeController extends Controller
     /**
      * @OA\Get(
      *     path="/api/room-types",
-     *     summary="Get all room types (Guest / Admin)",
+     *     summary="Get all room types (User / Admin)",
      *     tags={"Room Types"},
      *     @OA\Parameter(
      *         name="search",
@@ -103,7 +103,7 @@ class RoomTypeController extends Controller
     /**
      * @OA\Get(
      *     path="/api/room-types/{id}",
-     *     summary="Get a room type by ID (Guest / Admin)",
+     *     summary="Get a room type by ID (User / Admin)",
      *     tags={"Room Types"},
      *     @OA\Parameter(
      *         name="id",
@@ -119,6 +119,10 @@ class RoomTypeController extends Controller
      *     @OA\Response(
      *         response=404,
      *         description="Room type not found"
+     *     ),
+     *    @OA\Response(
+     *         response=422,
+     *         description="Invalid input"
      *     )
      * )
      */
@@ -202,35 +206,39 @@ class RoomTypeController extends Controller
      *     @OA\Response(
      *         response=404,
      *         description="Room type not found"
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Invalid input"
      *     )
      * )
      */
     public function update(Request $req, $id)
     {
         try {
+            // Merge ID into request for validation
+            $req->merge(['id' => $id]);
+            // Validation
+            $req->validate([
+                'id' => 'required|integer|exists:room_types,id',
+                'name' => 'nullable|string|unique:room_types,name,' ,
+                'description' => 'nullable|string|max:65535',
+            ]);
+
             $roomType = RoomType::where('id', $id)->first();
-        if (!$roomType) {            
-            return response()->json([
-                'result' => false,
-                'message' => 'Room type not found',
-            ], 404);
-        }           
-        $req->validate([
-            'name' => 'sometimes|required|string|unique:room_types,name,' . $id,
-            'description' => 'nullable|string|max:65535',
-        ]); 
-        if ($req->filled('name')) {
-            $roomType->name = $req->name;
-        }
-        if ($req->filled('description')) {
-            $roomType->description = $req->description;
-        }
-        $roomType->save();          
-        return response()->json([
-            'result' => true,
-            'message' => 'Room type updated successfully',
-            'data' => $roomType
-        ]);
+            if (!$roomType) {            
+                return $this->res_fail('Room type not found', [], 1, 404);
+            }           
+        
+            if ($req->filled('name')) {
+                $roomType->name = $req->name;
+            }
+            if ($req->filled('description')) {
+                $roomType->description = $req->description;
+            }
+            $roomType->save();     
+
+            return $this->res_success('Room type updated successfully');
         } catch (ValidationException $e) {
             return $this->return_error($e, 422);
         }
@@ -254,6 +262,10 @@ class RoomTypeController extends Controller
      *     @OA\Response(
      *         response=404,
      *         description="Room type not found"
+     *     ),
+     *    @OA\Response(
+     *         response=422,
+     *         description="Invalid input"
      *     )
      * )
      */
@@ -262,16 +274,63 @@ class RoomTypeController extends Controller
         try {
             $roomType = RoomType::where('id', $id)->first();
             if (!$roomType) {
-                return response()->json([
-                    'result' => false,
-                    'message' => 'Room type not found',
-                ], 404);
+                return $this->res_fail('Room type not found', [], 1, 404);
             }       
             $roomType->delete();
-            return response()->json([
-                'result' => true,
-                'message' => 'Room type deleted successfully',
+            return $this->res_success('Room type deleted successfully');
+        } catch (ValidationException $e) {
+            return $this->return_error($e, 422);
+        }
+    }
+    /**
+     * @OA\Post(
+     *     path="/api/room-types/bulk-delete",
+     *     summary="Bulk delete room types (Admin only)",
+     *     tags={"Room Types"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"ids"},
+     *             @OA\Property(
+     *                 property="ids",
+     *                 type="array",
+     *                 @OA\Items(type="integer"),
+     *                 description="Array of room type IDs to delete"
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Deleted Multiple Room types successfully"
+     *     ),
+     *    @OA\Response(
+     *        response=404,
+     *        description="No Room types found to delete"
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Invalid input"
+     *     )
+     * )
+     */
+    public function bulk_delete(Request $req)
+    {
+        try {
+            // merge ids array if not present
+            $req->merge(['ids' => $req->input('ids')]);
+            // Validation 
+            $req->validate([
+                'ids' => 'required|array|min:1',
+                'ids.*' => 'integer|distinct|exists:room_types,id',
             ]);
+
+            $ids = $req->input('ids');
+           $roomType = RoomType::whereIn('id', $ids)->delete();
+           if (!$roomType) {
+                return $this->res_fail('No Room types found to delete', [], 1, 404);
+            }
+
+            return $this->res_success('Deleted Multiple Room types successfully');
         } catch (ValidationException $e) {
             return $this->return_error($e, 422);
         }

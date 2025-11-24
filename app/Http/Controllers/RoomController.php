@@ -13,7 +13,7 @@ class RoomController extends Controller
      * @OA\Get(
      *     path="/api/rooms",
      *     tags={"Rooms"},
-     *     summary="Get list of rooms",
+     *     summary="Get list of rooms (User / Admin)",
      *     description="Retrieve a paginated list of rooms with optional sorting and filtering.",
      *     @OA\Parameter(
      *         name="search",
@@ -85,6 +85,10 @@ class RoomController extends Controller
      *     @OA\Response(
      *         response=400,
      *         description="Bad Request - Validation errors",
+     *     ),
+     *    @OA\Response(
+     *         response=422,
+     *         description="Invalid input"
      *     )
      * )        
      */
@@ -142,6 +146,288 @@ class RoomController extends Controller
             $rooms = $rooms->orderBy($sort_col, $sort_dir)->paginate($per_page, ['*'], 'page', $page);
             return $this->res_paginate($rooms, 'Get all rooms successfully', RoomDetailsResource::collection($rooms));
        } catch (ValidationException $e) {
+            return $this->return_error($e, 422);
+        }
+    }
+    /**
+     * @OA\Get(
+     *     path="/api/rooms/{id}",
+     *     tags={"Rooms"},
+     *     summary="Get room details by ID (User / Admin)",
+     *     description="Retrieve detailed information about a specific room by its ID.",
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         description="ID of the room to retrieve.",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Get a room detail successfully",
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Room not found",
+     *     ),
+     *    @OA\Response(
+     *        response=422,
+     *       description="Validation error",
+     *     )
+     * )        
+     */
+    public function find(Request $req, $id)
+    {
+        try {
+            // Merge ID into request for validation
+            $req->merge(['id' => $id]);
+            // Validation rules
+            $req->validate([
+                'id' => 'required|integer|min:1|exists:rooms,id'
+            ]);
+
+            $room = Room::where('id', $id)->first();
+            if (!$room) {
+                return $this->res_fail('Room not found', [], 1, 404);
+            }
+
+            return $this->res_success('Get a room detail successfully', new RoomDetailsResource($room));
+        } catch (ValidationException $e) {
+            return $this->return_error($e, 422);
+        }
+    }
+    /**
+     * @OA\Post(
+     *     path="/api/rooms",
+     *     tags={"Rooms"},
+     *     summary="Create a new room (Admin only)",
+     *     description="Create a new room with the provided details.",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"room_number", "room_type_id", "status", "price_per_month"},
+     *             @OA\Property(property="room_number", type="string", maxLength=10, example="A101"),
+     *             @OA\Property(property="room_type_id", type="integer", example=1),
+     *             @OA\Property(property="status", type="integer", description="1: Available, 2: Booked", example=1),   
+     *            @OA\Property(property="price_per_month", type="number", format="float", example=1500.00),
+     *            @OA\Property(property="description", type="string", maxLength=500, example="A cozy single room.")
+     *         )
+     *     )
+     * ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Room created successfully",
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *     )
+     * )    
+     */
+    public function store(Request $req)
+    {
+        try {
+            // Validation rules
+            $req->validate([
+                'room_number' => 'required|string|max:10|unique:rooms,room_number',
+                'room_type_id' => 'required|integer|exists:room_types,id',
+                'status' => 'required|integer|in:1,2', // 1: Available, 2: Booked
+                'price_per_month' => 'required|numeric|min:0|max:99999999.99',
+                'description' => 'nullable|string|max:500'
+            ]);
+
+            // Create new room
+            $room = new Room($req->only(['room_number', 'room_type_id', 'status', 'price_per_month', 'description']));
+            $room->save();
+
+            return $this->res_success('Room created successfully', new RoomDetailsResource($room), 201);
+        } catch (ValidationException $e) {
+            return $this->return_error($e, 422);
+        }
+    }
+    /**
+     * @OA\Put(
+     *     path="/api/rooms/{id}",
+     *     tags={"Rooms"},
+     *     summary="Update an existing room by ID (Admin only)",
+     *     description="Update the details of an existing room by its ID.",
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         description="ID of the room to update.",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="room_number", type="string", maxLength=10, example="A101"),
+     *             @OA\Property(property="room_type_id", type="integer", example=1),
+     *             @OA\Property(property="status", type="integer", description="1: Available, 2: Booked", example=1),   
+     *            @OA\Property(property="price_per_month", type="number", format="float", example=1500.00),
+     *           @OA\Property(property="description", type="string", maxLength=500, example="A cozy single room.")
+     *        )
+     *     )
+     * ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Room updated successfully",
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Room not found",    
+     *      ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *     ),
+     * )    
+     */
+    public function update(Request $req, $id)
+    {
+       try {
+            // Merge ID into request for validation
+            $req->merge(['id' => $id]);
+            // Validation rules
+            $req->validate([
+                'id' => 'required|integer|min:1|exists:rooms,id',
+                'room_number' => 'sometimes|required|string|max:10|unique:rooms,room_number,' . $id,
+                'room_type_id' => 'sometimes|required|integer|exists:room_types,id',
+                'status' => 'sometimes|required|integer|in:1,2', // 1: Available, 2: Booked
+                'price_per_month' => 'sometimes|required|numeric|min:0|max:99999999.99',
+                'description' => 'nullable|string|max:500'
+            ]);
+
+            // Find the room
+            $room = Room::where('id', $id)->first();
+            if (!$room) {
+                return $this->res_fail('Room not found', [], 1, 404);
+            }
+
+            // Update room details
+            if($req->filled('room_number')) {
+                $room->room_number = $req->input('room_number');
+            }
+            if($req->filled('room_type_id')) {
+                $room->room_type_id = $req->input('room_type_id');
+            }
+            if($req->filled('status')) {
+                $room->status = $req->input('status');
+            }
+            if($req->filled('price_per_month')) {
+                $room->price_per_month = $req->input('price_per_month');
+            }
+            if($req->filled('description')) {
+                $room->description = $req->input('description');
+            }
+            $room->save();
+
+            return $this->res_success('Room updated successfully', new RoomDetailsResource($room));
+        } catch (ValidationException $e) {
+            return $this->return_error($e, 422);
+        }
+
+    }
+    /**
+     * @OA\Delete(
+     *     path="/api/rooms/{id}",
+     *     tags={"Rooms"},
+     *     summary="Delete a room (Admin only)",
+     *     description="Delete an existing room by its ID.",
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         description="ID of the room to delete.",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Room deleted successfully",
+     *     ),
+     *     @ROA\Response(
+     *         response=404,
+     *         description="Room not found",    
+     *      ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *     ),
+     * )    
+     */
+    public function destroy(Request $req, $id)
+    {
+        try {
+            // Merge ID into request for validation
+            $req->merge(['id' => $id]);
+            // Validation rules
+            $req->validate([
+                'id' => 'required|integer|min:1|exists:rooms,id'
+            ]);
+
+            // Find the room
+            $room = Room::where('id', $id)->first();
+            if (!$room) {
+                return $this->res_fail('Room not found', [], 1, 404);
+            }
+
+            // Delete the room
+            $room->delete();
+
+            return $this->res_success('Room deleted successfully');
+        } catch (ValidationException $e) {
+            return $this->return_error($e, 422);
+        }
+    }
+    /**
+     * @OA\Post(
+     *     path="/api/rooms/bulk-delete",
+     *     tags={"Rooms"},
+     *     summary="Bulk delete rooms (Admin only)",
+     *     description="Delete multiple rooms by their IDs.",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"ids"},
+     *             @OA\Property(
+     *                 property="ids",
+     *                 type="array",
+     *                 @OA\Items(type="integer", example=1)
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Rooms deleted successfully",
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *     )
+     * )
+     */
+    public function bulk_delete(Request $req)
+    {
+        try {
+            // Merge IDs into request for validation
+            $req->merge(['ids' => $req->input('ids')]);
+            // Validation rules
+            $req->validate([
+                'ids' => 'required|array|min:1',
+                'ids.*' => 'integer|min:1|exists:rooms,id'
+            ]);
+
+            $ids = $req->input('ids');
+
+            // Delete rooms in bulk
+            $room = Room::whereIn('id', $ids)->delete();
+
+            if (!$room) {
+                return $this->res_fail('No Rooms found to delete', [], 1, 404);
+            }
+
+            return $this->res_success('Rooms deleted successfully');
+        } catch (ValidationException $e) {
             return $this->return_error($e, 422);
         }
     }
