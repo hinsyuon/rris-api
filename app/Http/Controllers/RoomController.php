@@ -231,7 +231,7 @@ class RoomController extends Controller
             $req->validate([
                 'room_number' => 'required|string|max:10|unique:rooms,room_number',
                 'room_type_id' => 'required|integer|exists:room_types,id',
-                'status' => 'required|integer|in:1,2', // 1: Available, 2: Booked
+                'status' => 'required|integer|in:'.implode(',', [Room::AVAILABLE, Room::BOOKED]), // 1: Available, 2: Booked
                 'price_per_month' => 'required|numeric|min:0|max:99999999.99',
                 'description' => 'nullable|string|max:500'
             ]);
@@ -293,7 +293,7 @@ class RoomController extends Controller
                 'id' => 'required|integer|min:1|exists:rooms,id',
                 'room_number' => 'sometimes|required|string|max:10|unique:rooms,room_number,' . $id,
                 'room_type_id' => 'sometimes|required|integer|exists:room_types,id',
-                'status' => 'sometimes|required|integer|in:1,2', // 1: Available, 2: Booked
+                'status' => 'sometimes|required|integer|in:'.implode(',', [Room::AVAILABLE, Room::BOOKED]), // 1: Available, 2: Booked
                 'price_per_month' => 'sometimes|required|numeric|min:0|max:99999999.99',
                 'description' => 'nullable|string|max:500'
             ]);

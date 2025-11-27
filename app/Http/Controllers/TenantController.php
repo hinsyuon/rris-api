@@ -199,14 +199,18 @@ class TenantController extends Controller
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             required={"first_name","last_name","gender","email","phone_number"},
+     *             required={"first_name","last_name","gender","email","phone_number", "room_id"},
      *             @OA\Property(property="first_name", type="string", maxLength=250, example="John"),
      *             @OA\Property(property="last_name", type="string", maxLength=250, example="Doe"),
      *             @OA\Property(property="gender", type="integer", example=1, description="1: Male, 2: Female, 3: Other"),    
-     *            @OA\Property(property="email", type="string", format="email", example="john.doe@example.com"),
-     *            @OA\Property(property="phone_number", type="string", maxLength=20, example="+1234567890"),
-     *            @OA\Property(property="address", type="string", maxLength=500, example="123 Main St, City, Country"),
-     *            @OA\Property(property="joined_at", type="string", format="date", example="2023-01-01"),
+     *             @OA\Property(property="email", type="string", format="email", example="john.doe@example.com"),
+     *             @OA\Property(property="phone_number", type="string", maxLength=20, example="+1234567890"),
+     *             @OA\Property(property="address", type="string", maxLength=500, example="123 Main St, City, Country"),
+     *             @OA\Property(property="joined_at", type="string", format="date", example="2023-01-01"),
+     *             @OA\Property(property="room_id", type="integer", example=1),
+     *             @OA\Property(property="amount_paid", type="number", format="float", example=500.00),
+     *             @OA\Property(property="payment_date", type="string", format="date", example="2023-01-01"),
+     *             @OA\Property(property="payment_status", type="integer", example=1, description="0: Pending, 1: Paid, 2: Late"),
      *         )
      *     ),
      *    @OA\Response( 
@@ -226,11 +230,15 @@ class TenantController extends Controller
             $req->validate([
                 'first_name' => 'required|string|max:250',
                 'last_name' => 'required|string|max:250',
-                'gender' => 'required|in:1,2,3',
+                'gender' => 'required|in:' . implode(',', [Tenant::MALE, Tenant::FEMALE, Tenant::OTHER]), // 1: Male, 2: Female, 3: Other
                 'email' => 'required|email|unique:tenants,email',
                 'phone_number' => 'required|string|max:20',
                 'address' => 'nullable|string|max:500',
                 'joined_at' => 'nullable|string|date_format:Y-m-d',
+                'amount_paid' => 'nullable|numeric|min:0',
+                'payment_date' => 'nullable|string|date_format:Y-m-d',
+                'payment_status' => 'nullable|in:'. implode(',', [Tenant::PENDING, Tenant::PAID, Tenant::LATE]), // 0: Pending, 1: Paid, 2: Late
+                'room_id' => 'nullable|integer|exists:rooms,id',
             ]);
 
             // Create new tenant
@@ -246,11 +254,62 @@ class TenantController extends Controller
               ]));
             $tenant->save();
 
+            // If payment details are provided, create a rent payment record
+            if ($req->filled(['amount_paid', 'payment_date', 'payment_status', 'room_id'])) {
+                $tenant->rooms()->attach($req->input('room_id'), [
+                    'amount_paid' => $req->input('amount_paid'),
+                    'payment_date' => $req->input('payment_date'),
+                    'payment_status' => $req->input('payment_status'),
+                ]);
+            }
+
             return $this->res_success('Tenant created successfully');
         } catch (ValidationException $e) {
             return $this->return_error($e, 422);
         }
     }
+    /**
+     * @OA\Put(
+     *     path="/api/tenants/{id}",
+     *     tags={"Tenants"},
+     *     summary="Update tenant details by ID (Admin only)",
+     *     description="Update the details of a specific tenant by its ID.",
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         description="ID of the tenant to update",
+     *         required=true,
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="first_name", type="string", maxLength=250, example="John"),
+     *             @OA\Property(property="last_name", type="string", maxLength=250, example="Doe"),
+     *             @OA\Property(property="gender", type="integer", example=1, description="1: Male, 2: Female, 3: Other"),  
+     *             @OA\Property(property="email", type="string", format="email", example="john.doe@example.com"),
+     *             @OA\Property(property="phone_number", type="string", maxLength=20, example="+1234567890"),
+     *             @OA\Property(property="address", type="string", maxLength=500, example="123 Main St, City, Country"),
+     *             @OA\Property(property="joined_at", type="string", format="date", example="2023-01-01"),
+     *             @OA\Property(property="room_id", type="integer", example=1),
+     *            @OA\Property(property="amount_paid", type="number", format="float", example=400.00),
+     *            @OA\Property(property="payment_date", type="string", format="date", example="2023-01-01"),
+     *            @OA\Property(property="payment_status", type="integer", example=1, description="0: Pending, 1: Paid, 2: Late"),
+     *         )
+     *     ),
+     *    @OA\Response(
+     *        response=200,
+     *       description="Tenant updated successfully",
+     *    ),
+     *    @OA\Response(
+     *       response=404,
+     *      description="Tenant not found",
+     *    ),
+     *    @OA\Response(
+     *       response=422,
+     *      description="Validation Error",
+     *    ),
+     * )
+     */
     public function update(Request $req, $id)
     {
         try {
@@ -261,11 +320,15 @@ class TenantController extends Controller
                 'id' => 'integer|exists:tenants,id',
                 'first_name' => 'nullable|string|max:250',
                 'last_name' => 'nullable|string|max:250', 
-                'gender' => 'nullable|in:1,2,3',
-                'email' => 'nullable|email|unique:tenants,email,',
+                'gender' => 'nullable|in:' .implode(',', [Tenant::MALE, Tenant::FEMALE, Tenant::OTHER]), // 1: Male, 2: Female, 3: Other
+                'email' => 'nullable|email|unique:tenants,email,'.$id,
                 'phone_number' => 'nullable|string|max:20',
                 'address' => 'nullable|string|max:500',
                 'joined_at' => 'nullable|string|date_format:Y-m-d',
+                'amount_paid' => 'nullable|numeric|min:0',
+                'payment_date' => 'nullable|string|date_format:Y-m-d',
+                'payment_status' => 'nullable|in:'.implode(',', [Tenant::PENDING, Tenant::PAID, Tenant::LATE]), // 0: Pending, 1: Paid, 2: Late
+                'room_id' => 'nullable|integer|exists:rooms,id',
             ]);
             $tenant = Tenant::where('id', $id)->first();
             if (!$tenant) {
@@ -292,6 +355,17 @@ class TenantController extends Controller
             }
             if ($req->filled('joined_at')) {
                 $tenant->joined_at = $req->joined_at;
+            }
+
+            if ($req->filled(['amount_paid', 'payment_date', 'payment_status', 'room_id'])) {
+                // Update or create rent payment record
+                $tenant->rooms()->syncWithoutDetaching([
+                    $req->input('room_id') => [
+                        'amount_paid' => $req->input('amount_paid'),
+                        'payment_date' => $req->input('payment_date'),
+                        'payment_status' => $req->input('payment_status'),
+                    ]
+                ]);
             }
             $tenant->save();
 

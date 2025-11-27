@@ -19,6 +19,9 @@ class DatabaseSeeder extends Seeder
             RoomTypeSeeder::class,
             RoomSeeder::class,
             TenantSeeder::class,
+            RoleSeeder::class,
+            AdminSeeder::class,
+            RoleAndPermissionSeeder::class,
         ]);
     }
 }

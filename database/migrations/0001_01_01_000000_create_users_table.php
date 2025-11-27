@@ -14,10 +14,17 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->timestamp('name_updated_at')->nullable();
+            $table->string('phone')->unique();
+            $table->string('avatar')->nullable();
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();
+            $table->string('google2fa_secret')->nullable();
+            $table->unsignedTinyInteger('is_active')->default(1)->comment('1 for active, 0 for deactivate');
+            $table->unsignedTinyInteger('is_first_time')->default(1)->comment('1 for first time login, 0 for not');
+            $table->unsignedTinyInteger('notification')->default(1)->comment('1 for receive notification, 0 for mute notification');
             $table->timestamps();
         });
 

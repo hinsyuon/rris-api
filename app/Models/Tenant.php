@@ -7,9 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class Tenant extends Model
 {
     //
-    public static $MALE = 1;
-    public static $FEMALE = 2;
-    public static $OTHER = 3;
+    public const MALE = 1;
+    public const FEMALE = 2;
+    public const OTHER = 3;
+    public const PENDING = 0;
+    public const PAID = 1;
+    public const LATE = 2;
+    
     // Define the fillable fields for mass assignment
     protected $fillable = [
         'first_name',

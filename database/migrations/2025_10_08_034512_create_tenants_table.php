@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use App\Models\Tenant;
 
 return new class extends Migration
 {
@@ -31,7 +32,7 @@ return new class extends Migration
             $table->unsignedBigInteger('room_id');
             $table->decimal('amount_paid', 10, 2)->default(0.00);
             $table->timestamp('payment_date')->nullable();
-            $table->unsignedSmallInteger('payment_status')->default(1)->comment('1: Pending, 2: Paid, 3: Late');
+            $table->unsignedSmallInteger('payment_status')->default(Tenant::PENDING)->comment('0: Pending, 1: Paid, 2: Late');
             $table->timestamps();
 
             //relationships

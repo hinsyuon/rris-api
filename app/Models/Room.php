@@ -6,8 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Room extends Model
 {
-    public static $AVAILABLE = 1;
-    public static $BOOKED = 2;
+    public const AVAILABLE = 1;
+    public const BOOKED = 2;
 
     // Define the fillable fields for mass assignment
     protected $fillable = [

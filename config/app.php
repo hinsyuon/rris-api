@@ -123,4 +123,15 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    // Other configurations...
+
+    'super_admin_email' => env('SUPER_ADMIN_EMAIL', 'superadmin@gmail.com'),
+    'super_admin_password' => env('SUPER_ADMIN_PASSWORD', '11223344aA!'),
+
+    'admin_email' => env('ADMIN_EMAIL', 'admin@gmail.com'),
+    'admin_password' => env('ADMIN_PASSWORD', '11223344aA!'),
+
+    'regular_user_email' => env('REGULAR_USER_EMAIL', 'user@gmail.com'),
+    'regular_user_password' => env('REGULAR_USER_PASSWORD', '11223344aA!'),
+
 ];
