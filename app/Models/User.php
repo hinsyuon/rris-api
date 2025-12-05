@@ -69,8 +69,40 @@ class User extends Authenticatable
     {
         return $this->roles()->where('role_id', $roleId)->exists();
     }
+    public function isSuperAdmin(): bool
+    {
+        // Assuming role ID 1 is for Super Admin
+        return $this->hasRole(1);
+    }
+    public function isAdmin(): bool
+    {
+        // Assuming role ID 2 is for Admin
+        return $this->hasRole(2);
+    }
+    public function isUser(): bool
+    {
+        // Assuming role ID 3 is for Regular User
+        return $this->hasRole(3);
+    }
     public function permissions()
     {
         return $this->roles()->with('permissions')->get()->pluck('permissions')->flatten()->unique('id');
     }
+    public function hasPermission($permissionName): bool
+    {
+        return $this->permissions()->where('name', $permissionName)->isNotEmpty();
+    }
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class);
+    }
+    public function unreadNotifications()
+    {
+        return $this->hasMany(Notification::class)->where('read_status', Notification::STATUS_UNREAD);
+    }
+    public function markAllNotificationsAsRead()
+    {
+        return $this->unreadNotifications()->update(['read_status' => Notification::STATUS_READ]);
+    }
+  
 }

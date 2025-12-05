@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RoomTypeController;
+use App\Http\Controllers\NotificationController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -31,5 +32,17 @@ Route::put('/tenants/{id}', [App\Http\Controllers\TenantController::class, 'upda
 Route::delete('/tenants/{id}', [App\Http\Controllers\TenantController::class, 'destroy']); 
 Route::post('/tenants/bulk-delete', [App\Http\Controllers\TenantController::class, 'bulk_delete']);
 
+# Notifications
+Route::get('/notifications', [NotificationController::class, 'index']);
+Route::get('/notifications/unread', [NotificationController::class, 'unread']);
+Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
 
-
+/*
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread', [NotificationController::class, 'unread']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+});
+*/

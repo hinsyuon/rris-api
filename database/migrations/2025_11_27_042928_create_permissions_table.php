@@ -20,7 +20,8 @@ return new class extends Migration
         // Permissions Table
         Schema::create('permissions', function (Blueprint $table) {
             $table->unsignedTinyInteger('id')->primary();
-            $table->string('name')->unique()->comment('1: Manage Tenants, 2: Manage Rooms, 3: Manage Payments, 4: Manage Users, 5: View Reports, 6: System Settings');
+            $table->string('name')->unique()
+                   ->comment('1: Manage Tenants, 2: Manage Rooms, 3: Manage Payments, 4: Manage Users, 5: View Reports, 6: System Settings');
         });
         
         // Role_User Pivot Table
